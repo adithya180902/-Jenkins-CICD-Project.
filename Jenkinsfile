@@ -1,34 +1,23 @@
 pipeline {
+
     agent any
+
+    options {
+        skipDefaultCheckout(true)
+    }
 
     environment {
         PATH = "/Users/adithya/.docker/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+        IMAGE_NAME = "jenkins-cicd-project"
     }
 
     stages {
 
-        stage('Prepare') {
+        stage('Checkout') {
             steps {
-                echo 'Creating Website Files'
+                echo 'Fetching source code from GitHub'
 
-                writeFile file: 'index.html', text: '''
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <title>Jenkins CI/CD Demo</title>
-                </head>
-                <body>
-                    <h1>Welcome to Jenkins CI/CD</h1>
-                    <p>Application built and tested using Docker.</p>
-                </body>
-                </html>
-                '''
-
-                writeFile file: 'Dockerfile', text: '''
-                FROM nginx:alpine
-                COPY index.html /usr/share/nginx/html/index.html
-                EXPOSE 80
-                '''
+                checkout scm
             }
         }
 
@@ -36,24 +25,27 @@ pipeline {
             steps {
                 echo 'Building Docker Image'
 
-                sh 'docker build -t jenkins-demo .'
+                sh 'docker build -t jenkins-cicd-project .'
             }
         }
 
         stage('Test') {
             steps {
-                echo 'Testing Application'
+                echo 'Testing Docker Application'
 
                 sh '''
-                    docker rm -f test-container 2>/dev/null || true
+                    docker rm -f jenkins-test 2>/dev/null || true
 
-                    docker run -d --name test-container -p 8081:80 jenkins-demo
+                    docker run -d \
+                    --name jenkins-test \
+                    -p 8081:80 \
+                    jenkins-cicd-project
 
-                    sleep 3
+                    sleep 5
 
                     curl --fail http://localhost:8081
 
-                    docker rm -f test-container
+                    docker rm -f jenkins-test
                 '''
             }
         }
@@ -65,9 +57,23 @@ pipeline {
                 sh '''
                     docker rm -f jenkins-deployed 2>/dev/null || true
 
-                    docker run -d --name jenkins-deployed -p 8082:80 jenkins-demo
+                    docker run -d \
+                    --name jenkins-deployed \
+                    -p 8082:80 \
+                    jenkins-cicd-project
                 '''
             }
+        }
+    }
+
+    post {
+        success {
+            echo 'CI/CD Pipeline Completed Successfully!'
+            echo 'Website: http://localhost:8082'
+        }
+
+        failure {
+            echo 'CI/CD Pipeline Failed. Check the console output.'
         }
     }
 }
