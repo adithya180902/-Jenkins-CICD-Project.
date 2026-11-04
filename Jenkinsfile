@@ -2,10 +2,6 @@ pipeline {
 
     agent any
 
-    options {
-        skipDefaultCheckout(true)
-    }
-
     environment {
         PATH = "/Users/adithya/.docker/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
         IMAGE_NAME = "jenkins-cicd-project"
@@ -15,8 +11,7 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                echo 'Fetching source code from GitHub'
-
+                echo 'Fetching project from GitHub'
                 checkout scm
             }
         }
@@ -24,14 +19,13 @@ pipeline {
         stage('Build') {
             steps {
                 echo 'Building Docker Image'
-
                 sh 'docker build -t jenkins-cicd-project .'
             }
         }
 
         stage('Test') {
             steps {
-                echo 'Testing Docker Application'
+                echo 'Testing Application'
 
                 sh '''
                     docker rm -f jenkins-test 2>/dev/null || true
@@ -39,7 +33,7 @@ pipeline {
                     docker run -d \
                     --name jenkins-test \
                     -p 8081:80 \
-                    jenkins-cicd-project
+                    ${IMAGE_NAME}
 
                     sleep 5
 
@@ -60,7 +54,7 @@ pipeline {
                     docker run -d \
                     --name jenkins-deployed \
                     -p 8082:80 \
-                    jenkins-cicd-project
+                    ${IMAGE_NAME}
                 '''
             }
         }
@@ -73,7 +67,7 @@ pipeline {
         }
 
         failure {
-            echo 'CI/CD Pipeline Failed. Check the console output.'
+            echo 'CI/CD Pipeline Failed!'
         }
     }
 }
